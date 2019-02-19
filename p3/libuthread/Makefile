@@ -1,6 +1,7 @@
 targets	:= libuthread.a
-objs	:= sem.o tps.o #thread.o queue.o 
+objs	:= sem.o tps.o thread.o queue.o 
 
+Keep := thread.o queue.o
 CC	:= gcc
 CFLAGS	:= -Wall -Werror
 CFLAGS	:= -g
@@ -28,4 +29,4 @@ $(targets): $(objs)
 
 clean:
 	@echo "CLEAN	$(CUR_PWD)"
-	$(Q)rm -rf $(objs) $(deps) $(targets)
+	$(Q)rm -rf $(objs) $(deps) $(targets) |egrep -v $(Keep)

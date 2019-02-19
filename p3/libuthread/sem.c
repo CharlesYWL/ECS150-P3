@@ -28,13 +28,13 @@ sem_t sem_create(size_t count)
 int sem_destroy(sem_t sem)
 {
 	if(sem == NULL | sem->count == 0){
-		fprintf(stderr,"semaphore error");
+		fprintf(stderr,"semaphore destory error");
 		return -1;
 	}else{
 		while(queue_length(sem->thread_list)>0){
-			queue_t *q;
-			queue_dequeue(sem->thread_list,q);
-			queue_delete(sem->thread_list,*q);
+			queue_t q;
+			//queue_dequeue(sem->thread_list,q);
+			queue_delete(sem->thread_list,q);
 		}
 		free(sem->thread_list);
 		free(sem);
@@ -68,7 +68,7 @@ int sem_up(sem_t sem)
 	//wake up first in line
 	void* rtnid;
 	if(queue_dequeue(sem->thread_list,rtnid))
-		thread_unblock(&rtnid);
+		thread_unblock((pthread_t)rtnid);
 	exit_critical_section();
 	return 0;
 }
