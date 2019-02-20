@@ -14,7 +14,7 @@ struct semaphore {
 sem_t sem_create(size_t count)
 {
 	sem_t new;
-	if (new = malloc(sizeof(sem_t))){
+	if (new = malloc(sizeof(struct semaphore))){
 		//malloc successful
 		new->count = count;
 		queue_t list = queue_create();
@@ -27,17 +27,13 @@ sem_t sem_create(size_t count)
 
 int sem_destroy(sem_t sem)
 {
-	if(sem == NULL | sem->count == 0){
+	if(sem == NULL || queue_length(sem->thread_list)!=0){
 		fprintf(stderr,"semaphore destory error");
 		return -1;
 	}else{
-		while(queue_length(sem->thread_list)>0){
-			queue_t q;
-			//queue_dequeue(sem->thread_list,q);
-			queue_delete(sem->thread_list,q);
-		}
-		free(sem->thread_list);
+		queue_destroy(sem->thread_list);
 		free(sem);
+		return 0;
 	}
 	
 }
@@ -67,7 +63,7 @@ int sem_up(sem_t sem)
 	sem->count += 1;
 	//wake up first in line
 	void* rtnid;
-	if(queue_dequeue(sem->thread_list,rtnid))
+	if(queue_dequeue(sem->thread_list,&rtnid)==0)
 		thread_unblock((pthread_t)rtnid);
 	exit_critical_section();
 	return 0;

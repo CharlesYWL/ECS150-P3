@@ -8,6 +8,7 @@ CFLAGS	:= -g
 
 ifneq ($(V),1)
 Q = @
+V = 0
 endif
 
 all: $(targets)
@@ -26,7 +27,8 @@ $(targets): $(objs)
 	@echo "CC	$@"
 	$(Q)$(CC) $(CFLAGS) -c -o $@ $< $(DEPFLAGS)
 
+remake: clean all
 
 clean:
 	@echo "CLEAN	$(CUR_PWD)"
-	$(Q)rm -rf $(objs) $(deps) $(targets) |egrep -v $(Keep)
+	$(Q)rm -rf sem.o tps.o $(deps) $(targets) 
