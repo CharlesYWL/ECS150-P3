@@ -8,6 +8,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>
+#define __USE_MISC
+#define _POSIX_C_SOURCE 200112L
+#define _DEFAULT_SOURCE /* for MAP_ANONYMOUS */
+#include <bits/mman.h>
+#include <fcntl.h>
 #include "queue.h"
 #include "thread.h"
 #include "tps.h"
@@ -52,7 +57,7 @@ int tps_create(void)
 	//MAP_SHARED/FIXED/PRIVATE
 	void * newpage = mmap(NULL,TPS_SIZE,PROT_READ|PROT_READ,MAP_ANONYMOUS,-1,0);
 	perror("errno: ");
-	fprintf(stderr,"newpage: %p has been assigned",newpage);
+	fprintf(stderr,"newpage: %p has been assigned\n",newpage);
 	t->pid = pthread_self();
 	t->storage = newpage;
 	queue_enqueue(globalStore,t);
