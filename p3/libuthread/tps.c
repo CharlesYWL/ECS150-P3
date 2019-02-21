@@ -13,13 +13,20 @@
 #include "thread.h"
 #include "tps.h"
 
-queue_t globalStore;
+queue_t globalStore = NULL;
+
+struct page
+{
+	int refcounter;
+	void *address;
+};
+typedef struct page *page_t;
 
 struct tps
 {
 	pthread_t pid;
 	// size_t length;
-	void *storage;
+	page_t storage;
 };
 typedef struct tps *tps_t;
 
@@ -31,7 +38,7 @@ int queue_equal(void *target1, void *target2)
 int queue_equaladdress(void *target1, void *target2)
 {
 	// return 1 if same, 0 not same
-	return ((tps_t)target1)->storage == target2 ? 1 : 0;
+	return ((tps_t)target1)->storage->address == target2 ? 1 : 0;
 }
 
 tps_t tps_find(pthread_t target)
@@ -50,7 +57,7 @@ tps_t tps_find(pthread_t target)
 	}
 }
 
-tps_t tps_findaddress(void* targetpage)
+tps_t tps_findaddress(void* targetpage) //specify for segv handler
 {
 	tps_t rtn = NULL;
 	if (globalStore == NULL || !targetpage)
@@ -88,8 +95,29 @@ static void segv_handler(int sig, siginfo_t *si, void *context)
 	raise(sig);
 }
 
-int tps_init(int segv)
+page_t page_init()
 {
+	page_t mpage = malloc(sizeof(struct page));
+	mpage->address = mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	mpage->refcounter = 1; 	
+	return mpage;
+}
+int page_destory(page_t target)
+{
+	if(target->refcounter >1)
+		return -1;//cannot be destroy
+	if( munmap(target->address, TPS_SIZE))
+		return -1; //return -1 if fail
+	free(target);
+	return 0;
+}
+
+int tps_init(int segv)
+{	
+	if (globalStore != NULL) {
+		return -1;
+	}
+
 	globalStore = queue_create();
 	if (segv)
 	{
@@ -106,36 +134,45 @@ int tps_init(int segv)
 
 int tps_create(void)
 {
-	tps_t t = malloc(sizeof(struct tps));
-	// PROT_EXEC/READ/WRITE/NONE
-	// MAP_SHARED/FIXED/PRIVATE
-	void *newpage =
-		mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	perror("errno: ");
-	fprintf(stderr, "newpage: %p has been assigned\n", newpage);
+	tps_t t = NULL;
+	t = tps_find(pthread_self()); //get tid
+	if (t != NULL) { //t should not exist
+		return -1;
+	}
+
+	t = malloc(sizeof(struct tps));
 	t->pid = pthread_self();
-	t->storage = newpage;
+	t->storage = page_init(); // new a page
 	queue_enqueue(globalStore, t);
+	return 0;
 }
 
 int tps_destroy(void)
 {
 	tps_t target = tps_find(pthread_self());
-	return munmap(target->storage, TPS_SIZE);
+	if(target == NULL)
+		return -1;
+	if(target->storage->refcounter > 1)
+		target->storage->refcounter -= 1;
+	else if (page_destory(target->storage))
+		//return -1 if failed
+		return -1;
+	free(target);
+	return 0;
 }
 
 int tps_read(size_t offset, size_t length, char *buffer)
 {
 	tps_t target = tps_find(pthread_self());
-	if (!target || mprotect(target->storage, TPS_SIZE, PROT_READ) == -1)
+	if (!target || mprotect(target->storage->address, TPS_SIZE, PROT_READ) == -1)
 	{
 		perror("tps_read: mprotect: ");
 		return -1;
 	}
 	else
 	{
-		memcpy(buffer, target->storage + offset, length);
-		mprotect(target->storage, TPS_SIZE, PROT_NONE);
+		memcpy(buffer, target->storage->address + offset, length);
+		mprotect(target->storage->address, TPS_SIZE, PROT_NONE);
 		return 0;
 	}
 }
@@ -143,7 +180,7 @@ int tps_read(size_t offset, size_t length, char *buffer)
 int tps_write(size_t offset, size_t length, char *buffer)
 {
 	tps_t target = tps_find(pthread_self());
-	if (!target || mprotect(target->storage, TPS_SIZE, PROT_WRITE) == -1)
+	if (!target || mprotect(target->storage->address, TPS_SIZE, PROT_WRITE) == -1)
 	{
 		// if any failed
 		perror("tps_write: mprotect: ");
@@ -151,9 +188,9 @@ int tps_write(size_t offset, size_t length, char *buffer)
 	}
 	else
 	{
-		memcpy(target->storage + offset, buffer, length);
-		perror("wirte: mmcpy");
-		mprotect(target->storage, TPS_SIZE, PROT_NONE);
+		memcpy(target->storage->address + offset, buffer, length);
+		// perror("wirte: mmcpy"); test only
+		mprotect(target->storage->address, TPS_SIZE, PROT_NONE);
 		return 0;
 	}
 }
@@ -162,6 +199,7 @@ int tps_clone(pthread_t tid)
 {
 	tps_t self = tps_find(pthread_self());
 	tps_t target = tps_find(tid);
+	//target should exist and self should be first time created
 	if (target == NULL || self != NULL)
 		return -1;
 	else
@@ -169,10 +207,10 @@ int tps_clone(pthread_t tid)
 		tps_create();
 		self = tps_find(pthread_self());
 		// tempary attain access
-		mprotect(target->storage, TPS_SIZE, PROT_READ);
-		mprotect(self->storage, TPS_SIZE, PROT_WRITE);
-		memcpy(self->storage, target->storage, TPS_SIZE);
-		mprotect(target->storage, TPS_SIZE, PROT_NONE);
-		mprotect(self->storage, TPS_SIZE, PROT_NONE);
+		mprotect(target->storage->address, TPS_SIZE, PROT_READ);
+		mprotect(self->storage->address, TPS_SIZE, PROT_WRITE);
+		memcpy(self->storage->address, target->storage->address, TPS_SIZE);
+		mprotect(target->storage->address, TPS_SIZE, PROT_NONE);
+		mprotect(self->storage->address, TPS_SIZE, PROT_NONE);
 	}
 }
