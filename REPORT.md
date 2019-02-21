@@ -1,4 +1,4 @@
-# SEMAPHORE & TPS
+# Project3 SEMAPHORE & TPS
 
 ## Overview
 
