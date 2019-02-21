@@ -51,7 +51,7 @@ tps_t tps_find(pthread_t target)
 	}
 	else
 	{
-		if (queue_iterate(globalStore, queue_equal, (void *)&target, (void *)&rtn))
+		if (queue_iterate(globalStore, queue_equal, (void *)&target, (void **)&rtn))
 			return NULL;
 		return rtn;
 	}
@@ -65,9 +65,8 @@ tps_t tps_findaddress(void* targetpage) //specify for segv handler
 		// fprintf(stderr,"invalid queue_t or target\n");
 		return NULL;
 	}
-	else
-	{
-		if (queue_iterate(globalStore, queue_equaladdress, (void *)&targetpage, (void *)&rtn))
+	else{
+		if (queue_iterate(globalStore, queue_equaladdress,targetpage, (void **)&rtn))
 			return NULL;
 		return rtn;
 	}

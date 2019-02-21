@@ -20,15 +20,14 @@ void *__wrap_mmap(void *addr, size_t len, int prot, int flags, int fildes,
 }
 void *thread1(void *arg)
 {
-    char *tps_addr = NULL;
-    strcpy(tps_addr, "test");
+    char tps_addr[10] = "hello\0";
     assert(tps_create() == 0);
 
     assert(tps_write(0, 1024, tps_addr) == 0);
     assert(tps_read(0, 1024, tps_addr) == 0);
 
-    tps_addr = latest_mmap_addr;
-    tps_addr[0] = '\0';
+    char * extraadder = latest_mmap_addr;
+    extraadder[0] = '\0';
 
     return 0;
 }

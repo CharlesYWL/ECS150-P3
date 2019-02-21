@@ -64,7 +64,7 @@ $(libuthread):
 	$(Q)$(MAKE) V=$(V) D=$(D) -C $(UTHREADPATH)
 
 #for protected test
-tps_part3.x: $(LDFLAGS) += -Wl,--wrap=mmap
+tps_part3.x: LDFLAGS += -Wl,--wrap=mmap
 
 # Generic rule for linking final applications
 %.x: %.o $(libuthread)
