@@ -7,7 +7,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
+#include <errno.h>
 #include "queue.h"
 #include "thread.h"
 #include "tps.h"
@@ -50,10 +50,9 @@ int tps_create(void)
 	tps_t t = malloc(sizeof(struct tps));
 	//PROT_EXEC/READ/WRITE/NONE
 	//MAP_SHARED/FIXED/PRIVATE
-	void * newpage = mmap(NULL,TPS_SIZE,PROT_READ|PROT_READ,MAP_SHARED,-1,0);
-	#if !DEBUG
+	void * newpage = mmap(NULL,TPS_SIZE,PROT_READ|PROT_READ,MAP_ANONYMOUS,-1,0);
+	perror("errno: ");
 	fprintf(stderr,"newpage: %p has been assigned",newpage);
-	#endif
 	t->pid = pthread_self();
 	t->storage = newpage;
 	queue_enqueue(globalStore,t);
@@ -87,7 +86,7 @@ int tps_clone(pthread_t tid)
 	else{
 		tps_create();
 		self = tps_find(pthread_self());
-		memcmp(self->storage,target->storage,TPS_SIZE);
+		memcpy(self->storage,target->storage,TPS_SIZE);
 	}
 }
 

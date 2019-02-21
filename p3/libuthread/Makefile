@@ -2,7 +2,7 @@ targets	:= libuthread.a
 objs	:= sem.o tps.o thread.o queue.o 
 
 Keep := thread.o queue.o
-CC	:= gcc 
+CC	:= gcc -std=gnu99
 CFLAGS	:= -Wall -Werror
 CFLAGS	:= -g
 
