@@ -98,7 +98,7 @@ page_t page_init()
 {
 	page_t mpage = malloc(sizeof(struct page));
 	mpage->address = mmap(NULL, TPS_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	mpage->refcounter = 1; 	
+	mpage->refcounter = 1;
 	return mpage;
 }
 int page_destory(page_t target)
@@ -112,7 +112,7 @@ int page_destory(page_t target)
 }
 
 int tps_init(int segv)
-{	
+{
 	if (globalStore != NULL) {
 		return -1;
 	}

@@ -8,7 +8,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/test/tps_part2.x",
+            "program": "${workspaceFolder}/test/sem_prime.x",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
