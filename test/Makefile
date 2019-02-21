@@ -3,7 +3,9 @@ programs := \
 	sem_count.x \
 	sem_buffer.x \
 	sem_prime.x \
-	tps.x 
+	tps.x \
+	tps_part2.x \
+	tps_part3.x
 
 # User-level thread library
 UTHREADLIB := libuthread
@@ -60,6 +62,9 @@ deps := $(patsubst %.o,%.d,$(objs))
 $(libuthread):
 	@echo "MAKE	$@"
 	$(Q)$(MAKE) V=$(V) D=$(D) -C $(UTHREADPATH)
+
+#for protected test
+tps_part3.x: $(LDFLAGS) += -Wl,--wrap=mmap
 
 # Generic rule for linking final applications
 %.x: %.o $(libuthread)

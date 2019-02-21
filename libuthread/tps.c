@@ -131,18 +131,23 @@ int tps_init(int segv)
 	}
 	return 0;
 }
-
+int tps_create_withP();
 int tps_create(void)
+{
+	tps_create_withP(page_init());
+}
+int tps_create_withP(page_t page)
 {
 	tps_t t = NULL;
 	t = tps_find(pthread_self()); //get tid
-	if (t != NULL) { //t should not exist
+	if (t != NULL)
+	{ //t should not exist
 		return -1;
 	}
 
 	t = malloc(sizeof(struct tps));
 	t->pid = pthread_self();
-	t->storage = page_init(); // new a page
+	t->storage = page; // use exist page
 	queue_enqueue(globalStore, t);
 	return 0;
 }
@@ -164,9 +169,9 @@ int tps_destroy(void)
 int tps_read(size_t offset, size_t length, char *buffer)
 {
 	tps_t target = tps_find(pthread_self());
-	if (!target || mprotect(target->storage->address, TPS_SIZE, PROT_READ) == -1)
+	if (!target || mprotect(target->storage->address, TPS_SIZE, PROT_READ) == -1 || buffer == NULL || offset < 0 || length + offset > TPS_SIZE || length < 0)
 	{
-		perror("tps_read: mprotect: ");
+		//perror("tps_read: mprotect: "); test only
 		return -1;
 	}
 	else
@@ -180,16 +185,27 @@ int tps_read(size_t offset, size_t length, char *buffer)
 int tps_write(size_t offset, size_t length, char *buffer)
 {
 	tps_t target = tps_find(pthread_self());
-	if (!target || mprotect(target->storage->address, TPS_SIZE, PROT_WRITE) == -1)
+	if (!target || mprotect(target->storage->address, TPS_SIZE, PROT_WRITE) == -1 || buffer == NULL || offset < 0 || length+offset > TPS_SIZE || length < 0)
 	{
 		// if any failed
-		perror("tps_write: mprotect: ");
+		//perror("tps_write: mprotect: "); test only
 		return -1;
 	}
 	else
 	{
+		if(target->storage->refcounter > 1){
+			page_t newpage = page_init(); // copy and write on newpage
+			mprotect(target->storage->address, TPS_SIZE, PROT_READ);
+			mprotect(newpage->address, TPS_SIZE, PROT_WRITE);
+			memcpy(newpage->address, target->storage->address, TPS_SIZE);
+			mprotect(target->storage->address, TPS_SIZE, PROT_NONE);
+			mprotect(newpage->address, TPS_SIZE, PROT_NONE);
+			target->storage->refcounter -= 1;
+			target->storage = newpage;
+		}
+		mprotect(target->storage->address, TPS_SIZE, PROT_WRITE);
+
 		memcpy(target->storage->address + offset, buffer, length);
-		// perror("wirte: mmcpy"); test only
 		mprotect(target->storage->address, TPS_SIZE, PROT_NONE);
 		return 0;
 	}
@@ -204,13 +220,9 @@ int tps_clone(pthread_t tid)
 		return -1;
 	else
 	{
-		tps_create();
+		tps_create_withP(target->storage);
 		self = tps_find(pthread_self());
-		// tempary attain access
-		mprotect(target->storage->address, TPS_SIZE, PROT_READ);
-		mprotect(self->storage->address, TPS_SIZE, PROT_WRITE);
-		memcpy(self->storage->address, target->storage->address, TPS_SIZE);
-		mprotect(target->storage->address, TPS_SIZE, PROT_NONE);
-		mprotect(self->storage->address, TPS_SIZE, PROT_NONE);
+		self->storage->refcounter += 1;
+		return 0;
 	}
 }

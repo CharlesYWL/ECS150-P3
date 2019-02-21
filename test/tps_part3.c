@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <tps.h>
+//protect test
 
 void *latest_mmap_addr;
 
@@ -17,19 +18,17 @@ void *__wrap_mmap(void *addr, size_t len, int prot, int flags, int fildes,
     latest_mmap_addr = __real_mmap(addr, len, prot, flags, fildes, off);
     return latest_mmap_addr;
 }
-
 void *thread1(void *arg)
 {
-    char b[1024] = {0};
+    char *tps_addr = NULL;
+    strcpy(tps_addr, "test");
     assert(tps_create() == 0);
 
-    // test: normal read and write
-    assert(tps_write(0, 1024, b) == 0);
-    assert(tps_read(0, 1024, b) == 0);
+    assert(tps_write(0, 1024, tps_addr) == 0);
+    assert(tps_read(0, 1024, tps_addr) == 0);
 
-    // test: memory protection, a segmentation fault should be thrown
-    char *protectedAddr = latest_mmap_addr;
-    protectedAddr[0] = 1;
+    tps_addr = latest_mmap_addr;
+    tps_addr[0] = '\0';
 
     return 0;
 }
@@ -37,10 +36,11 @@ void *thread1(void *arg)
 int main(int argc, char **argv)
 {
     pthread_t tid;
-    //init
-    assert(tps_init(1)==0);
+
+    assert(tps_init(1) == 0);
 
     pthread_create(&tid, NULL, thread1, NULL);
     pthread_join(tid, NULL);
 
+    return 0;
 }
