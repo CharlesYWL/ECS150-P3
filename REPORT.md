@@ -2,28 +2,34 @@
 
 ## Overview
 
-Spmaphore funtions as a lock, it can lock or unlock on a processor so that
-thread can whether access to it or not.
-TPS is a private storage that only the thread that creates it can use it.
+P3 is the most chanlleging project we think so far. Debugging this project 
+requires a huge amout of time and a lot of patience. Phase 1 is relatively 
+simple and easy to implement. Phase 2 is a nightmare but we survived.
+A huge Shout-out to an amazing Chinese IT Blog website 
+[CSDN](https://www.csdn.net/) which helped us a lot for the ideas of 
+implementing the page map.
 
-## Phase 1
 
-The whole Phase is about how to achieve the function of semaphore.
-The first idea came with is that we should have a global queue for 
-a single processor so that we know when one thread paused, which is 
-the next to operate. That's our `thread_list`. 
-the structure of semaphroe is pretty simple, one count and a thread list. 
-all the functions are pretty strightfoward.
+
+## Phase 1  
+
+The whole Phase is about how to implement a semaphore with required funcs.
+The first idea came into our mind was that we should have a global queue 
+for a single processor. We have to know when one thread paused, which 
+thread is the next to operate. That's our `thread_list`. 
+The structure of semaphore is pretty simple, a counter and a thread list. 
+The functions involved are pretty straightfoward and easy to understand.
 in`sem_create()`: we just malloc the size and set thread_list as queue.
-in`sem_dostroy()`: checked before free, nothing special.
-for the `sem_down` and `sem_up`, we need them away from interupted so wrap
-the core codes with `enter_critical_section()` and `exit_critical_section()`
+in`sem_dostroy()`: we check the sem before free it, nothing special.
+for the `sem_down` and `sem_up`, we need to keep them away from being 
+interrupted. Thus, we wrap the core codes with critical sections.
+`enter_critical_section()` and `exit_critical_section()`
 inside, we will check the countnumber to decide whether the thread will be
 `thread_block()`/`unblock()`,at the same time we `dequeue()`/`enqueue()`
-to operate the list. For the `sem_getvalue()`, it's simple so we only 
-need to checked the queue and count.
+to operate the list. For the `sem_getvalue()`, we just need to check the 
+queue and the counter.
 
-## Phase 2
+## Phase 2  
 
 in Phase2, we need a table of all pts, so we have `globalStore` to store
 all the tps. the structure is very simple, including pid and pages. 
